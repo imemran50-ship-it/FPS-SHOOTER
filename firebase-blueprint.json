@@ -1,0 +1,84 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "Soldier profile with combat stats, ranking, loadouts, and career record.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "maxLength": 128 },
+        "displayName": { "type": "string", "maxLength": 50 },
+        "callsign": { "type": "string", "maxLength": 30 },
+        "avatarUrl": { "type": "string", "maxLength": 500 },
+        "level": { "type": "number" },
+        "xp": { "type": "number" },
+        "rank": { "type": "string", "maxLength": 40 },
+        "kills": { "type": "number" },
+        "deaths": { "type": "number" },
+        "wins": { "type": "number" },
+        "matchesPlayed": { "type": "number" },
+        "accuracy": { "type": "number" },
+        "primaryWeapon": { "type": "string", "maxLength": 40 },
+        "secondaryWeapon": { "type": "string", "maxLength": 40 },
+        "selectedMap": { "type": "string", "maxLength": 40 },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["userId", "callsign", "level", "xp", "kills", "deaths", "wins", "matchesPlayed"]
+    },
+    "Lobby": {
+      "title": "Lobby",
+      "description": "Multiplayer match waiting room or active session.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 64 },
+        "name": { "type": "string", "maxLength": 60 },
+        "mapId": { "type": "string", "maxLength": 32 },
+        "gameMode": { "type": "string", "maxLength": 32 },
+        "hostId": { "type": "string", "maxLength": 128 },
+        "status": { "type": "string", "maxLength": 24 },
+        "playerCount": { "type": "number" },
+        "maxPlayers": { "type": "number" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "name", "mapId", "gameMode", "hostId", "status", "playerCount", "maxPlayers"]
+    },
+    "MatchPlayer": {
+      "title": "MatchPlayer",
+      "description": "Synchronized real-time player telemetry and combat state inside a match.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "userId": { "type": "string", "maxLength": 128 },
+        "displayName": { "type": "string", "maxLength": 50 },
+        "team": { "type": "string", "maxLength": 16 },
+        "kills": { "type": "number" },
+        "deaths": { "type": "number" },
+        "score": { "type": "number" },
+        "health": { "type": "number" },
+        "posX": { "type": "number" },
+        "posY": { "type": "number" },
+        "posZ": { "type": "number" },
+        "rotY": { "type": "number" },
+        "isFiring": { "type": "boolean" },
+        "weaponId": { "type": "string", "maxLength": 32 },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "userId", "displayName", "team", "kills", "deaths", "score", "health", "posX", "posY", "posZ", "rotY", "weaponId"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "Individual soldier profiles and combat statistics."
+    },
+    "/lobbies/{lobbyId}": {
+      "schema": "Lobby",
+      "description": "Active matchmaking lobbies for casual and competitive matchmaking."
+    },
+    "/lobbies/{lobbyId}/players/{playerId}": {
+      "schema": "MatchPlayer",
+      "description": "Players present in a multiplayer lobby or match."
+    }
+  }
+}

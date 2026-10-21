@@ -1,0 +1,124 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Default Deny Catch-All
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidUser(data) {
+      return data.keys().hasAll(['userId', 'callsign', 'level', 'xp', 'kills', 'deaths', 'wins', 'matchesPlayed'])
+        && data.keys().hasOnly(['userId', 'displayName', 'callsign', 'avatarUrl', 'level', 'xp', 'rank', 'kills', 'deaths', 'wins', 'matchesPlayed', 'accuracy', 'primaryWeapon', 'secondaryWeapon', 'selectedMap', 'createdAt', 'updatedAt'])
+        && data.userId is string && data.userId.size() <= 128
+        && data.callsign is string && data.callsign.size() > 0 && data.callsign.size() <= 30
+        && data.level is number && data.level >= 1
+        && data.xp is number && data.xp >= 0
+        && data.kills is number && data.kills >= 0
+        && data.deaths is number && data.deaths >= 0
+        && data.wins is number && data.wins >= 0
+        && data.matchesPlayed is number && data.matchesPlayed >= 0
+        && (!('displayName' in data) || (data.displayName is string && data.displayName.size() <= 50))
+        && (!('avatarUrl' in data) || (data.avatarUrl is string && data.avatarUrl.size() <= 500))
+        && (!('rank' in data) || (data.rank is string && data.rank.size() <= 40))
+        && (!('accuracy' in data) || (data.accuracy is number && data.accuracy >= 0 && data.accuracy <= 100))
+        && (!('primaryWeapon' in data) || (data.primaryWeapon is string && data.primaryWeapon.size() <= 40))
+        && (!('secondaryWeapon' in data) || (data.secondaryWeapon is string && data.secondaryWeapon.size() <= 40))
+        && (!('selectedMap' in data) || (data.selectedMap is string && data.selectedMap.size() <= 40))
+        && (!('createdAt' in data) || (data.createdAt is string && data.createdAt.size() <= 60))
+        && (!('updatedAt' in data) || (data.updatedAt is string && data.updatedAt.size() <= 60));
+    }
+
+    function isValidLobby(data) {
+      return data.keys().hasAll(['id', 'name', 'mapId', 'gameMode', 'hostId', 'status', 'playerCount', 'maxPlayers'])
+        && data.keys().hasOnly(['id', 'name', 'mapId', 'gameMode', 'hostId', 'status', 'playerCount', 'maxPlayers', 'createdAt', 'updatedAt'])
+        && data.id is string && data.id.size() <= 64
+        && data.name is string && data.name.size() > 0 && data.name.size() <= 60
+        && data.mapId is string && data.mapId.size() <= 32
+        && data.gameMode is string && data.gameMode.size() <= 32
+        && data.hostId is string && data.hostId.size() <= 128
+        && data.status is string && data.status.size() <= 24
+        && data.playerCount is number && data.playerCount >= 0 && data.playerCount <= 32
+        && data.maxPlayers is number && data.maxPlayers >= 1 && data.maxPlayers <= 32
+        && (!('createdAt' in data) || (data.createdAt is string && data.createdAt.size() <= 60))
+        && (!('updatedAt' in data) || (data.updatedAt is string && data.updatedAt.size() <= 60));
+    }
+
+    function isValidMatchPlayer(data) {
+      return data.keys().hasAll(['id', 'userId', 'displayName', 'team', 'kills', 'deaths', 'score', 'health', 'posX', 'posY', 'posZ', 'rotY', 'weaponId'])
+        && data.keys().hasOnly(['id', 'userId', 'displayName', 'team', 'kills', 'deaths', 'score', 'health', 'posX', 'posY', 'posZ', 'rotY', 'isFiring', 'weaponId', 'updatedAt'])
+        && data.id is string && data.id.size() <= 128
+        && data.userId is string && data.userId.size() <= 128
+        && data.displayName is string && data.displayName.size() <= 50
+        && data.team is string && data.team.size() <= 16
+        && data.kills is number && data.kills >= 0
+        && data.deaths is number && data.deaths >= 0
+        && data.score is number
+        && data.health is number && data.health >= 0 && data.health <= 500
+        && data.posX is number
+        && data.posY is number
+        && data.posZ is number
+        && data.rotY is number
+        && data.weaponId is string && data.weaponId.size() <= 32
+        && (!('isFiring' in data) || data.isFiring is bool)
+        && (!('updatedAt' in data) || (data.updatedAt is string && data.updatedAt.size() <= 60));
+    }
+
+    // --- Users Collection (Public Leaderboard read, Authed self write) ---
+    match /users/{userId} {
+      allow get: if isValidId(userId);
+      allow list: if true;
+      allow create: if isSignedIn() && isValidId(userId) && request.auth.uid == userId
+        && incoming().userId == userId && isValidUser(incoming());
+      allow update: if isSignedIn() && isValidId(userId) && request.auth.uid == userId
+        && incoming().userId == existing().userId && isValidUser(incoming());
+      allow delete: if false;
+    }
+
+    // --- Lobbies Collection (Public room browsing, Authed host & player actions) ---
+    match /lobbies/{lobbyId} {
+      allow get: if isValidId(lobbyId);
+      allow list: if true;
+      allow create: if isSignedIn() && isValidId(lobbyId)
+        && incoming().hostId == request.auth.uid
+        && isValidLobby(incoming());
+      allow update: if isSignedIn() && isValidId(lobbyId)
+        && isValidLobby(incoming())
+        && (
+          (existing().hostId == request.auth.uid && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'mapId', 'gameMode', 'playerCount', 'updatedAt']))
+          || (incoming().diff(existing()).affectedKeys().hasOnly(['playerCount', 'updatedAt']))
+        );
+      allow delete: if isSignedIn() && isValidId(lobbyId) && existing().hostId == request.auth.uid;
+
+      // Match Player telemetry subcollection
+      match /players/{playerId} {
+        allow get: if isValidId(playerId);
+        allow list: if true;
+        allow create: if isSignedIn() && isValidId(playerId)
+          && incoming().userId == request.auth.uid
+          && isValidMatchPlayer(incoming());
+        allow update: if isSignedIn() && isValidId(playerId)
+          && incoming().userId == request.auth.uid
+          && incoming().userId == existing().userId
+          && isValidMatchPlayer(incoming());
+        allow delete: if isSignedIn() && isValidId(playerId)
+          && (existing().userId == request.auth.uid || get(/databases/$(database)/documents/lobbies/$(lobbyId)).data.hostId == request.auth.uid);
+      }
+    }
+  }
+}

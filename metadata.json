@@ -1,0 +1,6 @@
+{
+  "name": "ApexStrike 3D: Tactical Mobile FPS",
+  "description": "High-graphics 3D mobile first-person shooter featuring realistic weapon ballistics, diverse tactical maps, bots, and online multiplayer matchmaking with Firebase.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
